@@ -1,17 +1,23 @@
-1. browserContext() and context() разница? что и когда используем? более подробно...
-2. page.context() and browser.context() разница?
-3. пример использования waitForRequest()?
-4. какая разница между async ({request}) и async (request)?
-5. page.request.get() работает, а  request.get() выдаст ошибку! test('', async (<WHAT?>) => {}) что нужно передавать как параметр?
-6. зачем так:
-     const browser = await playwright.chromium.launch(); 
+1. browserContext and context разница? что и когда используем? более подробно...
+   или это одно и тоже:
+   const context = await browser.newContext(); 
+   const browserContext = await browser.newContext(); 
+
+   а ещё есть page.context()...
+2. пример использования waitForRequest()?
+3. какая разница между async ({request}) и async (request)?
+4. page.request.get() работает, а  request.get() выдаст ошибку. test('', async (<WHAT?>) => {}) что нужно передавать как параметр?
+5. зачем так:
+     const browser = await chromium.launch(); 
      const context = await browser.newContext(); // Create a new incognito browser context
      const page = await context.newPage(); // Create a new page inside context.
    если можно так:
      test('', async ({ page }) => {})
 
-7. Доступ к элементам запроса и ответа
-8. page in the browser context -> что это значит?
-9. response.request() -> что значит?
-10. page.context().cookies('') -> почему не работает без context()
-11. context.cookies('') и page.context().cookies('')
+6. page in the browser context -> что это значит?
+7. response.request() -> что значит?
+8. page.context().cookies('') -> почему не работает без context()
+   и работает context.cookies(), где const context = await browser.newContext();
+9. async/await?
+    test('', async () => {})
+10. что из себя представляем response.body() = (Returns the buffer with response body.)? В каких случаях используем?

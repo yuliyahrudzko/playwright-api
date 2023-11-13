@@ -1,9 +1,10 @@
 const { test, expect } = require('@playwright/test');
-const playwright = require('playwright');
+const { chromium } = require('playwright');  // Or 'firefox' or 'webkit'.
 const userData = JSON.parse(JSON.stringify(require('../fixtures/users.json')));
 
 test('Login to demoqa', async () => {
-  const browser = await playwright.chromium.launch(); 
+  //launch a specific browser instance or
+  const browser = await chromium.launch(); 
 
   // Create a new incognito browser context
   const context = await browser.newContext(); 
@@ -21,6 +22,7 @@ test('Login to demoqa', async () => {
 
   await expect(page).toHaveURL(/.*profile/);
 
+  //cookies that affect those URLs are returned (in th context)
   let cookies = await context.cookies('https://demoqa.com/');
 
   await expect(cookies.find(c => c.name == 'userID').value).toBeTruthy();
@@ -37,16 +39,18 @@ test('Login to demoqa', async () => {
 
   const TOKEN = cookies.find(c => c.name == 'token').value;
 
+  //Once route is enabled, every request matching the url pattern will stall unless it's continued, fulfilled or aborted
   // Block .png and .jpeg images
   await page.route(/.(png|jpeg|img)$/, route => route.abort());
 
-  //Returns the matched response. 
+  //Returns the matched response
   const responsePromise = page.waitForResponse(response =>
     response.url() === 'https://demoqa.com/BookStore/v1/Books' && response.status() === 200
   );
 
   await page.locator('#gotoStore').click();
 
+  //await заставит интерпретатор JavaScript ждать до тех пор, пока промис справа от await не выполнится
   const booksResponse = await responsePromise;
 
   await expect(page).toHaveURL(/.*books/);
@@ -58,16 +62,14 @@ test('Login to demoqa', async () => {
 
   expect(booksResponse.status()).toBe(200);
 
-  const booksCountInResponse = await booksResponse.body().then(b => { 
+  //Returns the buffer with response body
+  //разобрать более подробно
+  const booksCountInResponse = await booksResponse.body().then(b => {
     let data = JSON.parse(b.toString()); 
     return data.books.length;
   });
-  
-  console.log(`Number of books in the response = ${booksCountInResponse}`);
 
   const booksCountOnUi = await page.locator('.rt-tbody>div img').count();
-
-  console.log(`Number of books on the UI = ${booksCountOnUi}`);
 
   expect(booksCountInResponse).toEqual(booksCountOnUi);
 
@@ -81,8 +83,6 @@ test('Login to demoqa', async () => {
     const response = await route.fetch();
     // Add a prefix to the title.
     let body = await response.text();
-
-    console.log(`Current page count is ${JSON.parse(body.toString()).pages}`);
 
     body = body.replace(JSON.parse(body.toString()).pages, newPageCount);
     route.fulfill({
@@ -104,7 +104,8 @@ test('Login to demoqa', async () => {
   //разобрать более подробно
   const response = await page.request.get(`https://demoqa.com/Account/v1/User/${USERID}`, {
     headers: {
-    'Authorization': `Bearer ${TOKEN}`, }
+    'Authorization': `Bearer ${TOKEN}`
+    }
   });
 
   console.log(await response.json());
@@ -112,7 +113,7 @@ test('Login to demoqa', async () => {
   //returns text representation of response body
   let body = await response.text(); 
 
-  console.log(body);
-
   expect(JSON.parse(body.toString()).username).toEqual(USERNAME);
+
+  expect(JSON.parse(body.toString()).books.length).toBe(0);
  });
