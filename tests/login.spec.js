@@ -1,22 +1,12 @@
 const { test, expect } = require('@playwright/test');
-const { chromium } = require('playwright');  // Or 'firefox' or 'webkit'.
-const userData = JSON.parse(JSON.stringify(require('../fixtures/users.json')));
+const { password, username } = require('../fixtures/users.json');
 
-test('Login to demoqa', async () => {
-  //launch a specific browser instance or
-  const browser = await chromium.launch(); 
-
-  // Create a new incognito browser context
-  const context = await browser.newContext(); 
-
-  // Create a new page inside context.
-  const page = await context.newPage(); 
-
+test('Login to demoqa', async ({ page, context }) => {
   await page.goto('https://demoqa.com/login');
 
-  await page.locator('#userName').fill(userData.username);
+  await page.locator('#userName').fill(username);
 
-  await page.locator('#password').fill(userData.password);
+  await page.locator('#password').fill(password);
 
   await page.locator('#login').click();
 
@@ -25,19 +15,19 @@ test('Login to demoqa', async () => {
   //cookies that affect those URLs are returned (in th context)
   let cookies = await context.cookies('https://demoqa.com/');
 
-  await expect(cookies.find(c => c.name == 'userID').value).toBeTruthy();
+  await expect(cookies.find(c => c.name === 'userID').value).toBeTruthy();
 
-  await expect(cookies.find(c => c.name == 'userName').value).toBeTruthy();
+  await expect(cookies.find(c => c.name === 'userName').value).toBeTruthy();
 
-  await expect(cookies.find(c => c.name == 'expires').value).toBeTruthy();
+  await expect(cookies.find(c => c.name === 'expires').value).toBeTruthy();
 
-  await expect(cookies.find(c => c.name == 'token').value).toBeTruthy();
+  await expect(cookies.find(c => c.name === 'token').value).toBeTruthy();
 
-  const USERID = cookies.find(c => c.name == 'userID').value;
+  const USERID = cookies.find(c => c.name === 'userID').value;
 
-  const USERNAME = cookies.find(c => c.name == 'userName').value;
+  const USERNAME = cookies.find(c => c.name === 'userName').value;
 
-  const TOKEN = cookies.find(c => c.name == 'token').value;
+  const TOKEN = cookies.find(c => c.name === 'token').value;
 
   //Once route is enabled, every request matching the url pattern will stall unless it's continued, fulfilled or aborted
   // Block .png and .jpeg images
@@ -62,10 +52,9 @@ test('Login to demoqa', async () => {
 
   expect(booksResponse.status()).toBe(200);
 
-  //Returns the buffer with response body
-  //разобрать более подробно
-  const booksCountInResponse = await booksResponse.body().then(b => {
-    let data = JSON.parse(b.toString()); 
+  //returns the JSON representation of response body.
+  //This method will throw if the response body is not parsable via JSON.parse
+  const booksCountInResponse = await booksResponse.json().then(data => {
     return data.books.length;
   });
 
@@ -81,10 +70,9 @@ test('Login to demoqa', async () => {
   page.route('https://demoqa.com/BookStore/v1/Book?**', async route => {
     // Fetch original response.
     const response = await route.fetch();
-    // Add a prefix to the title.
     let body = await response.text();
 
-    body = body.replace(JSON.parse(body.toString()).pages, newPageCount);
+    body = body.replace(await response.json().then(data => data.pages), newPageCount);
     route.fulfill({
       // Pass all fields from the response.
       response,
@@ -101,19 +89,13 @@ test('Login to demoqa', async () => {
 
   await page.screenshot({ path: 'BookContext.png' });
 
-  //разобрать более подробно
   const response = await page.request.get(`https://demoqa.com/Account/v1/User/${USERID}`, {
     headers: {
     'Authorization': `Bearer ${TOKEN}`
     }
   });
 
-  console.log(await response.json());
+  expect(await response.json().then(data => data.username)).toEqual(USERNAME);
 
-  //returns text representation of response body
-  let body = await response.text(); 
-
-  expect(JSON.parse(body.toString()).username).toEqual(USERNAME);
-
-  expect(JSON.parse(body.toString()).books.length).toBe(0);
+  expect(await response.json().then(data => data.books.length)).toBe(0);
  });
